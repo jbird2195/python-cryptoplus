@@ -61,11 +61,15 @@ fully based on standard specifications: http://www.crypto.ruhr-uni-bochum.de/imp
 test vectors: http://www.crypto.ruhr-uni-bochum.de/imperia/md/content/texte/publications/conferences/slides/present_testvectors.zip
 """
 class Present:
+        """ This is the Present Class that will be implementing the cipher for PRESENT """
+
+        """ This initial function just creates a PRESENT object that has a specific number of keys
+            and rounds that are associated with it. This first code just checks if a 128 bit key or 
+            a 80 bit key is initialized so that it call call the specific functions associated. The
+            function should output an error if anything incorrectly was performed """
 
         def __init__(self,key,rounds=32):
-                """Create a PRESENT cipher object
-
-                key:    the key as a 128-bit or 80-bit rawstring
+                """
                 rounds: the number of rounds as an integer, 32 by default
                 """
                 self.rounds = rounds
@@ -76,12 +80,16 @@ class Present:
                 else:
                         raise ValueError, "Key must be a 128-bit or 80-bit rawstring"
 
-        def encrypt(self,block):
-                """Encrypt 1 block (8 bytes)
 
-                Input:  plaintext block as raw string
-                Output: ciphertext block as raw string
-                """
+        """ This function is for the encryption and has the input as the plaintext for a string and the output
+            as a ciphertext block as a string. This function will encrypt a plaintext block and turn it into
+            a ciphertext output by going through the keys and calling addRoundyKey, the S permuation function
+            and the permutation layer, over the number of iterations. The final string should be returned
+            once the function has completed """
+
+        def encrypt(self,block):
+                """Encrypt 1 block (8 bytes)  """
+
                 state = string2number(block)
                 for i in xrange (self.rounds-1):
                         state = addRoundKey(state,self.roundkeys[i])
@@ -90,12 +98,15 @@ class Present:
                 cipher = addRoundKey(state,self.roundkeys[-1])
                 return number2string_N(cipher,8)
 
-        def decrypt(self,block):
-                """Decrypt 1 block (8 bytes)
+        """ This function is for the decryption box and it is essentially the opposite of the encryption segment. It 
+            will in this csae take an input string as the ciphertext and redirect the output as a plaintext back to the user.
+            This function has 2 main differences which is where the addRound key is -i-1 not i and in the decipher
+            where the roundkeys[0] is passed in. The permuation layer is also last in this case since this is essentially
+            a reversal of the encryption text """
 
-                Input:  ciphertext block as raw string
-                Output: plaintext block as raw string
-                """
+        def decrypt(self,block):
+                """Decrypt 1 block (8 bytes)"""
+
                 state = string2number(block)
                 for i in xrange (self.rounds-1):
                         state = addRoundKey(state,self.roundkeys[-i-1])
@@ -104,8 +115,16 @@ class Present:
                 decipher = addRoundKey(state,self.roundkeys[0])
                 return number2string_N(decipher,8)
 
+
+        """ This function is pretty self explanatory """
+
         def get_block_size(self):
                 return 8
+
+""" Defines the terms for the Sbox layer required in the PRESENT chart. Note that these 
+    values are given in the hexadecimal form. The SBox inv is also given and the permuation
+    box is given as well as the inverse which will be needed for other functions that are
+    called """
 
 #        0   1   2   3   4   5   6   7   8   9   a   b   c   d   e   f
 Sbox= [0xc,0x5,0x6,0xb,0x9,0x0,0xa,0xd,0x3,0xe,0xf,0x8,0x4,0x7,0x1,0x2]
@@ -116,6 +135,9 @@ PBox = [0,16,32,48,1,17,33,49,2,18,34,50,3,19,35,51,
         12,28,44,60,13,29,45,61,14,30,46,62,15,31,47,63]
 PBox_inv = [PBox.index(x) for x in xrange(64)]
 
+""" This function is called in many of the other calls. This function will
+    just generate the round keys for an 80 bit keys that was specified. """
+
 def generateRoundkeys80(key,rounds):
         """Generate the roundkeys for a 80-bit key
 
@@ -125,7 +147,6 @@ def generateRoundkeys80(key,rounds):
         Output: list of 64-bit roundkeys as integers"""
         roundkeys = []
         for i in xrange(1,rounds+1): # (K1 ... K32)
-                # rawkey: used in comments to show what happens at bitlevel
                 # rawKey[0:64]
                 roundkeys.append(key >>16)
                 #1. Shift
@@ -139,6 +160,9 @@ def generateRoundkeys80(key,rounds):
                 key ^= i << 15
         return roundkeys
 
+""" This function will do essentially the same thing as the function above but this time
+    it is specified with RoundKeys that have a 128 bit key system that is passed in. """
+
 def generateRoundkeys128(key,rounds):
         """Generate the roundkeys for a 128-bit key
 
@@ -148,7 +172,6 @@ def generateRoundkeys128(key,rounds):
         Output: list of 64-bit roundkeys as integers"""
         roundkeys = []
         for i in xrange(1,rounds+1): # (K1 ... K32)
-                # rawkey: used in comments to show what happens at bitlevel
                 roundkeys.append(key >>64)
                 #1. Shift
                 key = ((key & (2**67-1)) << 61) + (key >> 67)
@@ -159,50 +182,51 @@ def generateRoundkeys128(key,rounds):
                 key ^= i << 62
         return roundkeys
 
+""" This function adds the roundKey by taking the 2^b elements or state ^ roundkey of whatever was passed in """
 def addRoundKey(state,roundkey):
         return state ^ roundkey
 
-def sBoxLayer(state):
-        """SBox function for encryption
+""" This function is the sboxlayer that is found in the PRESENT algorithm. It will take in a 64 bit integer and
+    will return the output as a 64 bit integer """
 
-        Input:  64-bit integer
-        Output: 64-bit integer"""
+def sBoxLayer(state):
+
+        """SBox function for encryption """
 
         output = 0
         for i in xrange(16):
                 output += Sbox[( state >> (i*4)) & 0xF] << (i*4)
         return output
 
+""" This function is the inverse SBox function that is used for decryption. Again a 64 bit integer is used for input and is
+    outputted as well."""
 def sBoxLayer_dec(state):
-        """Inverse SBox function for decryption
 
-        Input:  64-bit integer
-        Output: 64-bit integer"""
+        """Inverse SBox function for decryption """
         output = 0
         for i in xrange(16):
                 output += Sbox_inv[( state >> (i*4)) & 0xF] << (i*4)
         return output
 
+""" This function defines the permutation layer for encrypting """
 def pLayer(state):
-        """Permutation layer for encryption
+        """Permutation layer for encryption """
 
-        Input:  64-bit integer
-        Output: 64-bit integer"""
         output = 0
         for i in xrange(64):
                 output += ((state >> i) & 0x01) << PBox[i]
         return output
 
-def pLayer_dec(state):
-        """Permutation layer for decryption
+""" This function determines the permutation layer function for decryption from ciphertext to plaintext """
 
-        Input:  64-bit integer
-        Output: 64-bit integer"""
+def pLayer_dec(state):
+        """Permutation layer for decryption """
         output = 0
         for i in xrange(64):
                 output += ((state >> i) & 0x01) << PBox_inv[i]
         return output
 
+""" This just converts a string to a number for easier reading and better formatting (converts to a hexadecimal) """
 def string2number(i):
     """ Convert a string to a number
 
@@ -210,6 +234,9 @@ def string2number(i):
     Output: long or integer
     """
     return int(i.encode('hex'),16)
+
+""" This function reverses the string2number and takes in a an integer and long and the length and essentially
+    will convert a number back to the string """
 
 def number2string_N(i, N):
     """Convert a number to a string of fixed size
@@ -227,3 +254,4 @@ def _test():
 
 if __name__ == "__main__":
     _test()
+    print("Everything Passed");
